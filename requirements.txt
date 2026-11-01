@@ -1,0 +1,12 @@
+# IANA timezone data for Africa/Cairo, including on Windows.
+tzdata>=2024.1
+pymupdf==2.0
+sentence-transformers==6.2.0
+transformers==5.22.1
+numpy==2.5.4
+huggingface-hub==2.4.0
+qdrant-client==1.20.0
+python-dotenv==1.2.4
+langgraph==1.2.19
+langchain-core==1.7.3
+chainlit==2.12.0

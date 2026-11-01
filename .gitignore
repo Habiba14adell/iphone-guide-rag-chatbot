@@ -4,9 +4,27 @@
 
 # Local PDF data
 Data/
-
-# Local assessment document
 GenAI Technical Assessment.docx
+
+# Generated logs and Python bytecode
+logs/
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+artifacts/
+.cache/
+
+# Local tests and validation checks
+test/
+tests/
+check/
+checks/
+docs/
+
+# Chainlit runtime files (keep the application configuration)
+.files/
+.chainlit/translations/
 
 
 

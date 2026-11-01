@@ -1,0 +1,21 @@
+[project]
+enable_telemetry = false
+
+[features]
+unsafe_allow_html = false
+latex = false
+user_message_autoscroll = true
+
+[features.spontaneous_file_upload]
+enabled = false
+
+[UI]
+name = "iPhone Guide Assistant"
+description = "Explore the supplied iPhone User Guide with source page references."
+default_theme = "light"
+layout = "wide"
+cot = "tool_call"
+default_collapse_content = true
+
+[meta]
+generated_by = "2.12.0"
