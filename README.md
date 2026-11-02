@@ -35,9 +35,9 @@ GEMINI_MODEL="gemini-3.5-flash-lite"
 | `GEMINI_API_KEY` | API key for answer generation |
 | `GEMINI_MODEL` | Gemini model ID available to the API key |
 
-The evaluator needs access to the populated Qdrant collection. Share its URL
-and an appropriate query key privately. A key from another cluster will not
-work. Keep credentials out of Git and the source ZIP.
+The application requires access to a Qdrant collection already populated with
+this guide. Use the URL and a read-capable key for that cluster. Keep real
+credentials in the local `.env` file; `.env.example` contains placeholders.
 
 ```powershell
 docker build -t chatbot:1.0 .
@@ -52,8 +52,7 @@ is required to reach Qdrant Cloud and Gemini. Chat startup uses the existing
 collection; it does not process the PDF, upload vectors, or create a collection.
 The local PDF and ingestion artifacts are not required to start chatting.
 
-Stop the container with Ctrl+C. Rebuild after code changes. Docker build and
-container startup have not yet been verified on the development machine.
+Stop the container with Ctrl+C. Rebuild the image after changing application code.
 
 ## Run locally without Docker
 
@@ -72,7 +71,7 @@ value causes a configuration error, set `$env:DEBUG='false'` before starting.
 ## How it works
 
 ```text
-User question ? Retrieve passages ? Generate answer ? Display answer and sources
+User question -> Retrieve passages -> Generate answer -> Display answer and sources
 ```
 
 Chainlit passes each question to the LangGraph workflow. Retrieval generates a
@@ -91,8 +90,7 @@ Session history stores questions and answer text without source lists, panels,
 or inline citation markers. History provides conversational context, while
 factual evidence must come from the current excerpts. It is not persisted
 across restarts. Retrieval currently searches only the latest question, so
-ambiguous follow-ups may retrieve unsuitable passages. There is no separate
-relevance judge or question-rewriting node.
+ambiguous follow-ups may retrieve unsuitable passages. The workflow consists of retrieval and answer generation.
 
 ## Models
 
@@ -101,10 +99,10 @@ relevance judge or question-rewriting node.
 - Answers: Gemini through `google-genai`, default `gemini-3.5-flash-lite`.
   Change `GEMINI_MODEL` to select another available model.
 
-The earlier ingestion report recorded tokenizer revision
-`5c38ec7c405ec4b44b94cc5a9bb96e735b38267a`. The default model setting resolves
-`main`; each ingestion run saves its resolved revision in the run summary.
-Gemini model IDs follow the provider's versioning.
+The recorded ingestion tokenizer revision is
+`5c38ec7c405ec4b44b94cc5a9bb96e735b38267a`. `MODEL_REVISION` defaults to
+`main` and resolves to a specific revision during loading. Gemini model IDs
+follow the provider's versioning.
 
 ## Local PDF ingestion
 
@@ -126,14 +124,13 @@ Configure the run in that settings file:
 | `BATCH_SIZE` | 32 |
 | `SKIP_EMBEDDINGS` | `False` |
 
-Set `SKIP_EMBEDDINGS = True` to review chunks without generating document
-vectors. Run the same command for either mode:
+`SKIP_EMBEDDINGS` controls whether document vectors are generated. Ingestion
+configuration is read directly from `settings.py`.
 
-```powershell
-.venv\Scripts\python.exe scripts\ingest_pdf.py
-```
-
-Ingestion reads settings directly and does not accept command-line options.
+The current ingestion entry point has an unresolved validation import and must
+be corrected before running `scripts/ingest_pdf.py`. This issue affects document
+preparation; chat queries use the existing collection and do not invoke that
+entry point.
 
 Extraction uses layout and contents entries to identify chapters and sections.
 It retains PDF and printed page numbers, reconstructs table rows where possible,
@@ -147,23 +144,9 @@ Chunks preserve IDs, chapter and section names, page ranges, content types,
 text, token counts, and detailed `source_spans`. Unchanged chunks can retain
 their previous IDs. Notices can carry links to related context chunks.
 
-Outputs are saved under `OUTPUT_PATH`:
-
-| File | Contents |
-| --- | --- |
-| `pages.jsonl` | Raw text, page references, extraction flags, and corrections |
-| `chunks.jsonl` | Chunk text and metadata |
-| `ingestion_summary.json` | Counts, configuration, source hash, headings, resolved revision, and embedding status |
-| `embeddings.npy` | Normalized vectors, full run only |
-| `embedding_ids.jsonl` | Mapping between vector rows and chunk IDs, full run only |
-
-The separate validation stage has been removed. Chunking and embedding still
-check their token limits. Vector saving checks counts, finite values, and
-normalization. Old validation and inspection reports are not regenerated.
-
-Outputs are overwritten on rerun. Use another `OUTPUT_PATH` to compare runs.
-Skipping embeddings does not remove older vector files, so consult the current
-summary's `embeddings_generated` value before using them.
+Page records and chunk metadata use JSONL. Document vectors use NumPy files,
+with a separate mapping between vector rows and chunk IDs. Generated files are
+stored under `OUTPUT_PATH` and are excluded from Git.
 
 The upload and collection-creation scripts are separate manual operations.
 They never run at chat startup. The uploader generates embeddings from the
@@ -221,17 +204,11 @@ iphone-guide-rag-chatbot/
 `-- requirements.txt
 ```
 
-## Logging and checks
+## Logging and limitations
 
 Application logs append to `logs/YYYY-MM-DD.log` using Cairo time. Docker logs
 remain inside the container unless a host directory is mounted. Secrets,
 local data, and generated files are excluded from the build context.
-
-The last full test attempt was blocked by an ingestion test importing the
-validation module that was moved out of the application. Existing tests were
-left unchanged. With that ingestion test excluded, 13 tests passed. Both
-ingestion modes also passed mocked pipeline checks. Docker and live
-answer-and-citation testing remain to be completed.
 
 Citation checks verify source IDs and page mapping, not whether every claim
 is supported in meaning. Extraction uses layout rules rather than OCR or image
