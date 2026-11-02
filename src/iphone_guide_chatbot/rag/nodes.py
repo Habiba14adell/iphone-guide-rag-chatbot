@@ -1,8 +1,5 @@
-"""LangGraph nodes for guide retrieval and grounded answer generation."""
-
 import logging
 from functools import lru_cache
-
 from ..config.logging_config import setup_logging
 from ..llm.gemini_client import GeminiClient
 from ..retrieval.retriever import retrieve_chunks

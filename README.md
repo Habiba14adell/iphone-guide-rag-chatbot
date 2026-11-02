@@ -44,6 +44,8 @@ iphone-guide-rag-chatbot/
 |       |   |-- app.py
 |       |   `-- presentation.py
 |       `-- __init__.py
+|-- .dockerignore
+|-- Dockerfile
 |-- .env.example
 |-- .gitignore
 |-- chainlit.md
@@ -51,17 +53,52 @@ iphone-guide-rag-chatbot/
 `-- requirements.txt
 ```
 
-Ingestion configuration lives in `src/iphone_guide_chatbot/config/settings.py`.
-The extraction, chunking, and validation behavior is unchanged. The retrieval and
-RAG files listed above are empty placeholders; the chatbot UI is not implemented.
+## Run with Docker
 
+Install Docker Desktop and use Linux containers. Copy `.env.example` to `.env`
+and fill in `QDRANT_URL`, `QDRANT_API_KEY`, and `GEMINI_API_KEY`. Keep the collection
+set to `iphone_user_guide`, which already contains the guide's vectors. Change
+`GEMINI_MODEL` only if you want to use another available Gemini model.
 
+From the repository root:
+
+```powershell
+docker build -t chatbot:1.0 .
+docker run -p 8000:8000 --env-file .env chatbot:1.0
 ```
 
-These are explicit operational commands, not part of application startup. The
-uploader retains its existing behavior of generating embeddings from the chunks
-before uploading. Restructuring does not execute either cloud script. Manual
-retrieval and connection checks remain in their original locations under `tests/`.
+Open [localhost:8000](http://localhost:8000). The first build downloads the Python
+dependencies and BGE embedding model, so it can take a while. Later builds reuse
+Docker's cached layers when possible.
+
+The container runs Chainlit on port **8000** and uses Qdrant Cloud and Gemini.
+It needs an internet connection to reach both services. The embedding model is
+cached in the image and runs on the CPU. No local PDF, ingestion artifacts, or
+upload command is needed to start chatting. Startup does not change the Qdrant
+collection.
+
+Credentials are supplied at runtime through `--env-file`; `.env`, local data,
+logs, and generated artifacts are excluded from the Docker build context.
+Logs are written inside the container to `logs/YYYY-MM-DD.log`. Stop the
+container with Ctrl+C. Rebuild the image after changing the application code.
+
+## Application flow
+
+Chainlit passes each question to LangGraph: retrieve matching guide passages,
+then generate an answer with Gemini using that context. Supported answers show
+source sections and PDF page references. When the guide does not provide enough
+information, the assistant declines and hides the sources. There is currently
+no separate relevance judge node.
+
+## Run without Docker
+
+Use Python 3.12, configure `.env` as above, then run:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe -m chainlit run src/iphone_guide_chatbot/ui/app.py --port 8000
+```
 
 ## Required application behaviour
 
@@ -109,14 +146,7 @@ soft target to stay intact; no chunk may exceed the hard maximum or the model
 limit. Overlap is shortened or omitted to avoid fragmenting protected blocks or
 exceeding the budget. `--model`, `--revision`, `--target-tokens`, `--max-tokens`,
 `--overlap-tokens`, `--model-limit`, and `--batch-size` configure the pipeline.
-Both tokenizer and embedder use the resolved model revision. See
-[ingestion design notes](docs/ingestion.md) for extraction rules and limitations.
-
-Install `requirements-dev.txt` to run checks:
-
-```powershell
-.venv\Scripts\python.exe -m pytest -q
-```
+Both tokenizer and embedder use the resolved model revision.
 
 After the model is cached, set `$env:HF_HUB_OFFLINE='1'` for an offline run.
 Artifacts, downloaded models, the virtual environment, and logs are ignored by Git.
@@ -133,5 +163,5 @@ calls do not add duplicate daily handlers; existing console handlers are preserv
 Use `logger.exception("Description of the failure")` inside an exception handler
 to include its traceback. Never log API keys, credentials, or full request headers.
 Logs are ignored by Git. Mount the logs directory in Docker to retain files after
-container removal. Application entry points will be wired up as they are built.
+container removal.
 

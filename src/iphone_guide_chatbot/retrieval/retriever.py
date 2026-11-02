@@ -1,5 +1,3 @@
-"""Read semantic retrieval from the existing iPhone guide collection."""
-
 import logging
 import numpy as np
 from qdrant_client import QdrantClient, models

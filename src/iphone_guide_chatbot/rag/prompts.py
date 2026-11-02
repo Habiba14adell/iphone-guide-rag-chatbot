@@ -1,5 +1,3 @@
-"""Prompts for answering from retrieved iPhone User Guide excerpts."""
-
 import json
 
 

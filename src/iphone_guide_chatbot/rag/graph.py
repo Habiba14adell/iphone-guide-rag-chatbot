@@ -1,7 +1,4 @@
-"""LangGraph workflow for retrieving guide excerpts and generating an answer."""
-
 from langgraph.graph import END, START, StateGraph
-
 from .nodes import generate_answer_node, retrieve_node
 from .state import AgentState
 
