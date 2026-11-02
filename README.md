@@ -21,7 +21,6 @@ Fill in the connection details and API keys:
 QDRANT_URL="https://your-qdrant-cluster-url"
 QDRANT_API_KEY="your-qdrant-key"
 QDRANT_COLLECTION="iphone_user_guide"
-RETRIEVAL_TOP_K=5
 GEMINI_API_KEY="your-gemini-key"
 GEMINI_MODEL="gemini-3.5-flash-lite"
 ```
@@ -31,7 +30,6 @@ GEMINI_MODEL="gemini-3.5-flash-lite"
 | `QDRANT_URL` | URL of the cluster containing the guide |
 | `QDRANT_API_KEY` | Key with read access to the existing collection |
 | `QDRANT_COLLECTION` | Collection name; default `iphone_user_guide` |
-| `RETRIEVAL_TOP_K` | Number of retrieved chunks; default 5 |
 | `GEMINI_API_KEY` | API key for answer generation |
 | `GEMINI_MODEL` | Gemini model ID available to the API key |
 

@@ -6,12 +6,12 @@ from dotenv import load_dotenv
 PROJECT_PATH = Path(__file__).resolve().parents[3]
 load_dotenv(PROJECT_PATH / ".env")
 
-# Existing Qdrant collection and query settings (credentials stay in .env).
+# Existing Qdrant collection and query settings
 QDRANT_URL = os.getenv("QDRANT_URL")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "iphone_user_guide")
 VECTOR_SIZE = 384
-TOP_K = int(os.getenv("RETRIEVAL_TOP_K"))
+TOP_K = 5
 
 # Gemini text generation settings.
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
