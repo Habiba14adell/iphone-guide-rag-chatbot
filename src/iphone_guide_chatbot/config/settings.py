@@ -17,6 +17,10 @@ COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "iphone_user_guide")
 VECTOR_SIZE = 384
 TOP_K = int(os.getenv("RETRIEVAL_TOP_K", "5"))
 
+# Gemini text generation settings.
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL") or "gemini-3.5-flash-lite"
+
 # Source and output paths
 PDF_PATH = "Data/iPhone User Guide 1.pdf"
 OUTPUT_PATH = "artifacts/ingestion"

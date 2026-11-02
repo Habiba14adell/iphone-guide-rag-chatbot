@@ -37,22 +37,20 @@ iphone-guide-rag-chatbot/
 |   |   `-- retriever.py          # Read-only semantic retrieval
 |   |-- rag/
 |   |   |-- __init__.py
-|   |   |-- graph.py              # Retrieval and relevance routing
-|   |   |-- nodes.py              # Retrieval and evaluator interface
+|   |   |-- graph.py              # Retrieval then answer generation
+|   |   |-- nodes.py              # Retrieval and answer-generation nodes
 |   |   |-- state.py              # Shared AgentState
-|   |   `-- prompts.py            # Empty placeholder
+|   |   `-- prompts.py            # Guide-grounded answer prompt
+|   |-- llm/
+|   |   |-- __init__.py
+|   |   `-- gemini_client.py      # Reusable Gemini Interactions client
 |   `-- ui/
 |       |-- __init__.py
 |       |-- app.py                # Chainlit session handlers
 |       `-- presentation.py       # Source display formatting
-|-- tests/                       # Existing files remain in place
-|   |-- .gitkeep
-|   |-- conftest.py
-|   |-- test_ingestion.py
-|   |-- test_retrieval.py
-|   |-- qdrant.py
-|   `-- QDEANT_.PY
-|-- checks/                      # Additional offline backend/UI checks
+|-- checks/
+|   `-- test_answer_generation.py # Mocked offline workflow checks
+|-- test/gemni_test.py            # Manual live Gemini request
 |-- .chainlit/config.toml         # Chainlit name, theme, and features
 |-- chainlit.md                   # UI information page
 |-- .env                         # Local credentials; ignored by Git
@@ -64,9 +62,9 @@ iphone-guide-rag-chatbot/
 ```
 
 Ingestion configuration lives in `src/iphone_guide_chatbot/config/settings.py`.
-The extraction, chunking, and validation behavior is unchanged. Retrieval and the
-initial LangGraph workflow are implemented. Chainlit displays source excerpts for
-inspection; relevance evaluation and answer generation are not configured.
+The extraction, chunking, and validation behavior is unchanged. The LangGraph
+workflow retrieves guide excerpts and generates a grounded answer with Gemini.
+It does not use a relevance judge.
 
 The standalone cloud scripts have moved to `scripts/`. From the repository root,
 their entry points are:
@@ -102,29 +100,33 @@ $env:DEBUG='false'
 
 Open **http://localhost:8000**. The `DEBUG` setting prevents an inherited nonboolean
 value from interfering with Chainlit's command-line configuration. The existing
-`.env` supplies Qdrant credentials; do not enter API keys in the chat.
+`.env` must supply Qdrant credentials and `GEMINI_API_KEY`; the Gemini model
+defaults to `gemini-3.5-flash-lite`. Do not enter API keys in the chat.
 
-Ask a question such as ?How can I connect my iPhone to a Wi-Fi network?? A loading
-indicator covers the graph invocation. Each response is explicitly labeled
-**retrieved context, not a final answer**. The source links open the complete
-excerpts, section/chapter names, PDF pages, and printed page references. Markers
+Ask a question such as "How can I connect my iPhone to a Wi-Fi network?" A loading
+indicator covers the graph invocation. Responses contain Gemini's answer and PDF
+page references from retrieved chunks. Supporting excerpts, section and chapter
+names, and printed page references are available in the source panel. Markers
 such as `[icon in PDF]` require inspecting the cited PDF page.
 
 Conversation history and the compiled graph are held in each Chainlit session.
-A new chat has a separate history; no database persistence is configured. History
-is passed to the workflow for future use, but follow-up question rewriting is not
-implemented. The UI does not create a relevance evaluator or generate answers.
+A new chat has a separate history; no database persistence is configured. Prior
+assistant answers are not sent to Gemini as evidence; each answer uses excerpts
+retrieved for the current question.
 
 Starting the UI does not extract the PDF, generate document embeddings, create
 collections, or upload points. Only questions generate query embeddings and
 read the existing collection. The first model load can take longer than later
 searches. With the model cached, `$env:HF_HUB_OFFLINE='1'` avoids model downloads.
 
-Run all existing and additional offline checks without changing `tests/`:
+Run the additional offline workflow checks (mocked; no Gemini quota used):
 
 ```powershell
-.venv\Scripts\python.exe -m pytest -q tests checks
+.venv\Scripts\python.exe -m pytest -q checks
 ```
+
+The standalone `test/gemni_test.py` script makes a live Gemini request and is not
+part of the offline checks.
 
 Browser validation uses Playwright with the installed Microsoft Edge browser.
 Screenshots from validation are local files under `artifacts/ui/`, excluded from Git.

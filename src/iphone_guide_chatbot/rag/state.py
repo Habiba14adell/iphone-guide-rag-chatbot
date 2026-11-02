@@ -11,15 +11,9 @@ class AgentState(TypedDict):
     conversation_history: list[dict[str, str]]
     retrieved_chunks: list[dict[str, Any]]
     question: str
-    is_relevant: NotRequired[bool]
-    relevance_reason: NotRequired[str]
     answer: str
     status: str
     citations: NotRequired[list[dict[str, Any]]]
-
-
-
-
     
 
 

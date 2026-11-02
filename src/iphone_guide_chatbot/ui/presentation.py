@@ -1,7 +1,4 @@
-"""Format retrieved context for display without generating an answer."""
-
-
-PENDING_MESSAGE = "**Answer generation is not configured yet.** Relevance evaluation is also pending."
+"""Format generated answers and their retrieved PDF evidence for Chainlit."""
 
 
 def format_pages(pages):
@@ -10,38 +7,34 @@ def format_pages(pages):
 
 def format_source(chunk, rank):
     lines = [
-        f"### Source {rank}: {chunk.get('section', 'Untitled section')}",
+        f"### Supporting source {rank}: {chunk.get('section', 'Untitled section')}",
         f"**Chapter:** {chunk.get('chapter', 'Not available')}",
         f"**PDF pages:** {format_pages(chunk.get('pdf_pages', []))}",
         f"**Printed pages:** {format_pages(chunk.get('printed_pages', []))}",
         f"**Document:** {chunk.get('source', 'iPhone User Guide')}",
         "",
-        "**Retrieved excerpt — not a generated answer**",
+        "**Retrieved excerpt supporting the answer**",
         "",
     ]
     if chunk.get("requires_visual_reference"):
         lines.extend(["Some controls are marked `[icon in PDF]`. View the cited PDF page to identify them.", ""])
-    # Indent the source as literal text so document formatting cannot become UI markup.
+    # Indent source text as literal content so document formatting cannot become UI markup.
     lines.extend("    " + line for line in chunk["content"].splitlines())
     return "\n\n".join(lines[:5]) + "\n\n" + "\n".join(lines[5:])
 
 
-def format_response(chunks):
-    lines = [PENDING_MESSAGE, "", "### Retrieved context — not a final answer", ""]
-    if not chunks:
-        lines.append("No excerpts were returned for this search. You can try another question.")
-        return "\n".join(lines)
+def format_answer(answer, citations):
+    """Render the generated answer and PDF references supplied by retrieval metadata."""
+    content = answer.strip() if isinstance(answer, str) else ""
+    if not content:
+        content = "I couldn't generate an answer right now. Please try again."
+    if not citations:
+        return content
 
-    lines.extend([f"Found {len(chunks)} excerpts. Open a source to inspect its complete text.", ""])
-    for rank, chunk in enumerate(chunks, start=1):
-        body = chunk["content"].partition("\n\n")[2] or chunk["content"]
-        preview = " ".join(body.split())
-        if len(preview) > 220:
-            preview = preview[:220].rsplit(" ", 1)[0] + "…"
-        lines.extend([
-            f"**Source {rank}** · {chunk.get('section', 'Untitled section')}",
-            f"PDF pages **{format_pages(chunk.get('pdf_pages', []))}** · "
-            f"Printed pages {format_pages(chunk.get('printed_pages', []))}",
-            f"> {preview}", "",
-        ])
-    return "\n\n".join(lines)
+    references = ["", "### Sources"]
+    for citation in citations:
+        rank = citation.get("source_number", "?")
+        pages = format_pages(citation.get("pdf_pages", []))
+        section = citation.get("section") or citation.get("chapter") or "iPhone User Guide"
+        references.append(f"- Source {rank} · PDF page(s) {pages} · {section}")
+    return "\n".join([content, *references])

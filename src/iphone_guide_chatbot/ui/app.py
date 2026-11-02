@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from iphone_guide_chatbot.config.logging_config import setup_logging
 from iphone_guide_chatbot.rag.graph import build_state_graph
-from iphone_guide_chatbot.ui.presentation import format_response, format_source
+from iphone_guide_chatbot.ui.presentation import format_answer, format_source
 
 
 logger = logging.getLogger(__name__)
@@ -21,9 +21,8 @@ WELCOME_MESSAGE = """# iPhone Guide Assistant
 
 Explore the supplied **iPhone User Guide**.
 
-Ask a question to inspect passages from the guide and their PDF page references.
-**Answer generation is not configured yet** — retrieved excerpts are shown for
-inspection, not as generated answers.
+Ask a question about the guide. Answers are grounded in retrieved passages and
+include PDF page references.
 
 Try: *How can I connect my iPhone to a Wi-Fi network?*
 """
@@ -63,19 +62,21 @@ async def on_message(message: cl.Message):
                     "status": "retrieving",
                 })
                 cl.user_session.set("last_result", result)
+                chunks = result.get("retrieved_chunks", [])
+                citations = result.get("citations", [])
+                content = format_answer(result.get("answer", ""), citations)
+                elements = [
+                    cl.Text(name=f"Source {rank}", content=format_source(chunk, rank), display="side")
+                    for rank, chunk in enumerate(chunks, start=1)
+                ]
                 if result.get("status") == "error":
                     step.is_error = True
-                    step.output = "The guide search could not be completed."
-                    content = "I couldn't retrieve the guide excerpts. Please try again. Answer generation is not configured yet."
+                    step.output = "The guide search or answer generation failed."
                 else:
-                    chunks = result.get("retrieved_chunks", [])
-                    step.output = f"Retrieved {len(chunks)} excerpts."
-                    content = format_response(chunks)
-                    elements = [cl.Text(name=f"Source {rank}", content=format_source(chunk, rank), display="side")
-                                for rank, chunk in enumerate(chunks, start=1)]
+                    step.output = f"Retrieved {len(chunks)} excerpts and generated an answer."
         except Exception as error:
             logger.error("UI request failed (%s)", type(error).__name__)
-            content = "The guide search could not be completed. Please try again. Answer generation is not configured yet."
+            content = "I couldn't retrieve the guide excerpts or generate an answer. Please try again."
 
         await cl.Message(content=content, author=APP_NAME, elements=elements).send()
         history.append({"role": "assistant", "content": content})
