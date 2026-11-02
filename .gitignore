@@ -22,7 +22,6 @@ check/
 checks/
 docs/
 
-# Chainlit runtime files (keep the application configuration)
 .files/
 .chainlit/translations/
 

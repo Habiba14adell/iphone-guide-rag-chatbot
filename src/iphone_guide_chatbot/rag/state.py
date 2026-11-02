@@ -14,6 +14,4 @@ class AgentState(TypedDict):
     answer: str
     status: str
     citations: NotRequired[list[dict[str, Any]]]
-    
-
 

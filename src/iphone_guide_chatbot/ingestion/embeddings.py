@@ -1,12 +1,9 @@
-"""Load the tokenizer and model independently of PDF processing."""
 
 import logging
 import re
 from pathlib import Path
-
 from huggingface_hub import hf_hub_download
 from transformers import AutoTokenizer
-
 from .chunking import token_count
 from ..config.settings import CACHE_PATH
 
@@ -15,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 def load_tokenizer(config):
-    # Resolve a repository revision once so ingestion remains reproducible.
     revision = config["model_revision"]
     if not Path(config["model_name"]).is_dir():
         config_path = hf_hub_download(

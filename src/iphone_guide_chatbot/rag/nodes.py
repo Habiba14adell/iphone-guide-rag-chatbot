@@ -16,7 +16,6 @@ setup_logging()
 
 @lru_cache(maxsize=1)
 def _get_gemini_client() -> GeminiClient:
-    """Create one Gemini client per process and reuse it across graph calls."""
     return GeminiClient()
 
 def _citations_for_chunks(chunks: list[dict], source_numbers: list[int]) -> list[dict]:
@@ -33,7 +32,6 @@ def _citations_for_chunks(chunks: list[dict], source_numbers: list[int]) -> list
 
 
 def validate_answer_citations(answer: str, chunks: list[dict]) -> tuple[str, list[dict]]:
-    # Resolve only explicit source markers; page numbers always come from metadata.
     answer = answer.strip()
     if answer == UNSUPPORTED_ANSWER:
         return answer, []
@@ -96,7 +94,7 @@ def generate_answer_node(state: AgentState) -> dict:
         if any(not isinstance(chunk.get("content"), str) for chunk in chunks):
             raise ValueError("Each retrieved chunk must contain text content")
 
-        prompt = build_answer_prompt(question, chunks, state.get("conversation_history"))
+        prompt = build_answer_prompt(question, chunks)
         answer = _get_gemini_client().generate_text(prompt)
         answer, citations = validate_answer_citations(answer, chunks)
         return {"answer": answer, "citations": citations, "status": "completed"}

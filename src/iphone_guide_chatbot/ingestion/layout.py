@@ -14,7 +14,6 @@ def nearby_rectangles(first, second, tolerance=0.7):
 
 
 def get_icon_regions(page):
-    # Inline controls are vector artwork or small images, not missing text glyphs.
     candidates = []
     for drawing in page.get_drawings():
         rect = drawing["rect"]
@@ -52,7 +51,6 @@ def add_inline_icons(row, regions, page_number):
         center_y = (rect[1] + rect[3]) / 2
         if not top + 1 <= center_y <= bottom - 1:
             continue
-        # Do not insert artwork inside the actual text or from distant diagrams.
         if any(rect[0] < character["bbox"][2] - 0.7 and rect[2] > character["bbox"][0] + 0.7 for character in visible):
             continue
         distances = [min(abs(rect[0] - character["bbox"][2]), abs(rect[2] - character["bbox"][0])) for character in visible]
@@ -63,8 +61,6 @@ def add_inline_icons(row, regions, page_number):
         references.append(reference)
     if not references:
         return row, []
-    # Some PDFs put text on both sides of a drawing in a single text span.
-    # Insert at character coordinates, including gaps inside those spans.
     events = [(character["bbox"][0], character["c"]) for character in characters]
     events.extend(((ref["bbox"][0] + ref["bbox"][2]) / 2, f" {ICON_MARKER} ") for ref in references)
     events.sort(key=lambda event: event[0])
@@ -102,10 +98,8 @@ def extract_layout(page, clean_text):
             visible = [span for span in line["spans"] if any(ch["c"].strip() for ch in span["chars"])]
             size = max(span["size"] for span in visible)
             if size >= 18 and text == "·":
-                continue  # Decorative warning triangle, not a textual section title.
-            # The two painted bullet glyphs represent a single bullet on the page.
+                continue
             text = re.sub(r"^••\s*", "• ", text)
-            # Vertical 'Appendix' decorations are not section headings.
             if text == "Appendix" and abs(line.get("dir", (1, 0))[0]) < 0.5:
                 continue
             lines.append({"text": text, "bbox": bbox, "block": block_index,
@@ -119,7 +113,6 @@ def extract_layout(page, clean_text):
     result, references = [], []
     for block_index, block_lines in grouped.items():
         if all("Helvetica" in line["font"] and line["size"] < 9 for line in block_lines):
-            # Separate labels in different diagram columns, preserving each label's lines.
             columns = []
             for line in block_lines:
                 column = next((column for column in columns

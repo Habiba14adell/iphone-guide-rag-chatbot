@@ -1,18 +1,14 @@
-﻿"""Run PDF ingestion and save local files for review before using Qdrant."""
-
-import hashlib
+﻿import hashlib
 import json
 import logging
 from pathlib import Path
-
 import numpy as np
-
 from ..config.logging_config import setup_logging
 from .chunking import create_chunks, preserve_unchanged_ids, link_notice_context
 from .embeddings import generate_embeddings, load_tokenizer
 from .extraction import extract_pdf
 from ..config.settings import PDF_PATH, OUTPUT_PATH, SKIP_EMBEDDINGS, get_config
-from .validation import inspection_text, validate_chunks
+from ....tests.validation import inspection_text, validate_chunks
 
 
 logger = logging.getLogger(__name__)
@@ -54,11 +50,9 @@ def run_ingestion(pdf_path=PDF_PATH, output_dir=OUTPUT_PATH, config=None, skip_e
     if previous_path.exists():
         previous_chunks = [json.loads(line) for line in previous_path.read_text(encoding="utf-8").splitlines()]
 
-    # Extract page text, headings, and paragraphs without losing source references.
     pages, sections, headings, contents = extract_pdf(pdf_path)
     save_jsonl(output_dir / "pages.jsonl", pages)
 
-    # Use the same model revision for token counting and embedding.
     tokenizer = load_tokenizer(config)
     config["model_revision"] = tokenizer.init_kwargs["_commit_hash"]
     chunks = create_chunks(sections, tokenizer, config, source_hash)
@@ -71,7 +65,6 @@ def run_ingestion(pdf_path=PDF_PATH, output_dir=OUTPUT_PATH, config=None, skip_e
                     chunk["pdf_page_end"], chunk["section"])
     save_jsonl(output_dir / "chunks.jsonl", chunks)
 
-    # Validate all chunks before passing any text to the embedding model.
     report = validate_chunks(pages, sections, chunks, tokenizer, config)
     report.update({
         "configuration": config,
@@ -95,7 +88,6 @@ def run_ingestion(pdf_path=PDF_PATH, output_dir=OUTPUT_PATH, config=None, skip_e
     logger.info("Validated %s pages and %s chunks; %s pages need extraction review",
                 len(pages), len(chunks), len(report["problematic_pages"]))
 
-    # Generate normalized vectors and save them locally, in chunk order.
     if not skip_embeddings:
         vectors = generate_embeddings(chunks, config, tokenizer)
         save_embeddings(output_dir, chunks, vectors)

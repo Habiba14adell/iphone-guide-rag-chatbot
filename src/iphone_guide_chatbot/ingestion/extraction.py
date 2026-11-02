@@ -1,12 +1,9 @@
-﻿"""Recover sections from PDF layout, contents entries, and printed footers."""
-
+﻿
 import logging
 import re
 import unicodedata
 from collections import Counter
-
 import pymupdf
-
 from .layout import extract_layout, sort_by_block
 
 

@@ -1,9 +1,5 @@
-﻿"""Configuration for PDF ingestion and local embeddings."""
-
-
-import os
+﻿import os
 from pathlib import Path
-
 from dotenv import load_dotenv
 
 
@@ -15,7 +11,7 @@ QDRANT_URL = os.getenv("QDRANT_URL")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "iphone_user_guide")
 VECTOR_SIZE = 384
-TOP_K = int(os.getenv("RETRIEVAL_TOP_K", "5"))
+TOP_K = int(os.getenv("RETRIEVAL_TOP_K"))
 
 # Gemini text generation settings.
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -25,8 +21,6 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL") or "gemini-3.5-flash-lite"
 PDF_PATH = "Data/iPhone User Guide 1.pdf"
 OUTPUT_PATH = "artifacts/ingestion"
 CACHE_PATH = ".cache/huggingface"
-# Set True to inspect extraction and chunks without generating document vectors.
-SKIP_EMBEDDINGS = False
 
 # Embedding model settings
 MODEL_NAME = "BAAI/bge-small-en-v1.5"
@@ -34,7 +28,7 @@ MODEL_REVISION = "main"
 MODEL_LIMIT = 512
 BATCH_SIZE = 32
 
-# Chunking settings (measured with the embedding model's tokenizer)
+# Chunking settings
 TARGET_TOKENS = 350
 MAX_TOKENS = 450
 OVERLAP_TOKENS = 50

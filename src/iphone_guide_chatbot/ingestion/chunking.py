@@ -1,15 +1,11 @@
-﻿"""Group related text and split long sections within the BGE token budget."""
-
-import hashlib
+﻿import hashlib
 import logging
 import re
-
 from ..config.settings import validate_config
 
 
 logger = logging.getLogger(__name__)
 
-# Try larger text boundaries before moving to smaller ones.
 SPLIT_SEPARATORS = [r"\n\n+", r"\n", r"(?<=[.!?])\s+", r"\s+"]
 PROTECTED_TYPES = {"procedure", "table", "diagram"}
 
@@ -39,7 +35,6 @@ def group_blocks(blocks):
         else:
             groups.append([block])
 
-    # Keep an introduction ending with a colon beside its numbered steps.
     result = []
     for group in groups:
         if (group[0]["chunk_type"] == "procedure" and result
@@ -53,7 +48,6 @@ def group_blocks(blocks):
 def split_long_word(text, prefix, tokenizer, config):
     parts = []
     while text:
-        # Find a source-text slice that fits without decoding partial tokens.
         start, end = 1, len(text)
         while start < end:
             middle = (start + end + 1) // 2
@@ -80,7 +74,6 @@ def split_text_recursive(text, prefix, tokenizer, config, level=0):
     if not matches:
         return split_text_recursive(text, prefix, tokenizer, config, level + 1)
 
-    # Retain separators while splitting so no source words are removed.
     boundaries = [0] + [match.end() for match in matches] + [len(text)]
     parts = []
     for start, end in zip(boundaries, boundaries[1:]):
@@ -121,7 +114,6 @@ def prepare_section_blocks(section, prefix, tokenizer, config):
         if token_count(render_chunk(prefix, group), tokenizer) <= config["max_tokens"]:
             units.append(group)
             continue
-        # Split oversized groups between whole steps or table rows first.
         for block in group:
             for part in split_block(block, prefix, tokenizer, config):
                 units.append([part])
@@ -138,10 +130,8 @@ def get_overlap(blocks, tokenizer, overlap_tokens):
             overlap.insert(0, block)
             remaining -= len(offsets)
         else:
-            # Partial paragraphs are safe for overlap; partial procedures are not.
             if block["chunk_type"] == "paragraph" and remaining:
                 start = offsets[-remaining][0]
-                # Token offsets may point inside a word (for example 'message').
                 while start and start < len(block["text"]) and not block["text"][start - 1].isspace():
                     start += 1
                 sentence = re.search(r"(?<=[.!?])\s+", block["text"][start:])
@@ -153,7 +143,6 @@ def get_overlap(blocks, tokenizer, overlap_tokens):
         if not remaining:
             break
 
-    # Account for the separators between overlapping blocks too.
     while overlap:
         text = "\n\n".join(block["text"] for block in overlap)
         if len(tokenizer.encode(text, add_special_tokens=False)) <= overlap_tokens:
@@ -223,8 +212,6 @@ def create_chunks(sections, tokenizer, config, source_hash):
                 chunk = build_chunk(section, current_blocks, tokenizer, config, source_hash,
                                     section_index, len(chunks), overlap_count)
                 chunks.append(chunk)
-
-                # Carry context forward only inside this section.
                 current_blocks = get_overlap(current_blocks, tokenizer, config["overlap_tokens"])
                 if token_count(render_chunk(prefix, current_blocks + unit), tokenizer) > config["max_tokens"]:
                     current_blocks = []
@@ -258,7 +245,6 @@ def preserve_unchanged_ids(chunks, previous_chunks):
 
 
 def link_notice_context(chunks, sections):
-    # If the hard budget separates a notice, preserve a retrievable relationship.
     for section in sections:
         section_chunks = [chunk for chunk in chunks
                           if chunk["chapter"] == section["chapter"] and chunk["section"] == section["section"]]
