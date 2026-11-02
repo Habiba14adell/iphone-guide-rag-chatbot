@@ -25,6 +25,8 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL") or "gemini-3.5-flash-lite"
 PDF_PATH = "Data/iPhone User Guide 1.pdf"
 OUTPUT_PATH = "artifacts/ingestion"
 CACHE_PATH = ".cache/huggingface"
+# Set True to inspect extraction and chunks without generating document vectors.
+SKIP_EMBEDDINGS = False
 
 # Embedding model settings
 MODEL_NAME = "BAAI/bge-small-en-v1.5"

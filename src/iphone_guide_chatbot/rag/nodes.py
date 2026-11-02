@@ -1,4 +1,5 @@
 import logging
+import re
 from functools import lru_cache
 from ..config.logging_config import setup_logging
 from ..llm.gemini_client import GeminiClient
@@ -18,16 +19,43 @@ def _get_gemini_client() -> GeminiClient:
     """Create one Gemini client per process and reuse it across graph calls."""
     return GeminiClient()
 
-def _citations_for_chunks(chunks: list[dict]) -> list[dict]:
+def _citations_for_chunks(chunks: list[dict], source_numbers: list[int]) -> list[dict]:
     citation_fields = (
-        "source", "chapter", "section", "pdf_pages", "printed_pages", "point_id",
+        "source", "chapter", "section", "pdf_pages", "printed_pages", "point_id", "source_spans",
     )
     citations = []
-    for rank, chunk in enumerate(chunks, start=1):
+    for rank in source_numbers:
+        chunk = chunks[rank - 1]
         citation = {"source_number": rank}
         citation.update({key: chunk[key] for key in citation_fields if key in chunk})
         citations.append(citation)
     return citations
+
+
+def validate_answer_citations(answer: str, chunks: list[dict]) -> tuple[str, list[dict]]:
+    # Resolve only explicit source markers; page numbers always come from metadata.
+    answer = answer.strip()
+    if answer == UNSUPPORTED_ANSWER:
+        return answer, []
+    markers = list(re.finditer(r"\[Source ([0-9]+)\]", answer))
+    if not markers:
+        raise ValueError("Generated answer has no source citations")
+    source_numbers = list(dict.fromkeys(int(match.group(1)) for match in markers))
+    if any(number < 1 or number > len(chunks) for number in source_numbers):
+        raise ValueError("Generated answer cites an unknown source")
+    citations = _citations_for_chunks(chunks, source_numbers)
+    if any(not citation.get("pdf_pages") for citation in citations):
+        raise ValueError("Cited source has no PDF page references")
+    pages_by_source = {
+        citation["source_number"]: ", ".join(str(page) for page in citation["pdf_pages"])
+        for citation in citations
+    }
+    answer = re.sub(
+        r"\[Source ([0-9]+)\]",
+        lambda match: f"[Source {int(match.group(1))}, PDF page(s) {pages_by_source[int(match.group(1))]}]",
+        answer,
+    )
+    return answer, citations
 
 def retrieve_node(state: AgentState) -> dict:
     try:
@@ -62,17 +90,15 @@ def generate_answer_node(state: AgentState) -> dict:
             "status": "completed",
         }
 
-    citations = _citations_for_chunks(chunks)
     try:
         if not isinstance(question, str) or not question.strip():
             raise ValueError("A nonempty question is required")
         if any(not isinstance(chunk.get("content"), str) for chunk in chunks):
             raise ValueError("Each retrieved chunk must contain text content")
 
-        prompt = build_answer_prompt(question, chunks)
+        prompt = build_answer_prompt(question, chunks, state.get("conversation_history"))
         answer = _get_gemini_client().generate_text(prompt)
-        if answer.strip() == UNSUPPORTED_ANSWER:
-            citations = []
+        answer, citations = validate_answer_citations(answer, chunks)
         return {"answer": answer, "citations": citations, "status": "completed"}
     except Exception as error:
         logger.error("Answer generation failed (%s)", type(error).__name__)

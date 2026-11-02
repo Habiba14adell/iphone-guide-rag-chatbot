@@ -90,6 +90,21 @@ source sections and PDF page references. When the guide does not provide enough
 information, the assistant declines and hides the sources. There is currently
 no separate relevance judge node.
 
+Session history contains each question and the answer text, without source panels,
+source lists, or inline citation markers. It is sent to the answer prompt to help
+interpret follow-ups. History is context, not factual evidence. Retrieval still
+searches using the latest question; standalone question rewriting is not implemented.
+
+## Models
+
+- Embeddings: `BAAI/bge-small-en-v1.5`, 384 dimensions, normalized vectors with
+  cosine similarity. The validated ingestion tokenizer revision is
+  `5c38ec7c405ec4b44b94cc5a9bb96e735b38267a`. The default model setting resolves
+  `main`; this revision records the version used by the ingestion report.
+- Answers: Gemini through `google-genai`, default model ID
+  `gemini-3.5-flash-lite`. `GEMINI_MODEL` selects the model at runtime; the
+  provider controls updates to that model ID.
+
 ## Run without Docker
 
 Use Python 3.12, configure `.env` as above, then run:
@@ -121,12 +136,13 @@ the repository root, run:
 ```
 
 The default PDF is `Data/iPhone User Guide 1.pdf`. The source PDF is local and
-excluded from Git. Use `--pdf` to supply a different path. The first run downloads
+excluded from Git. Change `PDF_PATH` in `config/settings.py` to use another path. The first run downloads
 the public BGE model and tokenizer into `.cache/huggingface`; no API key is needed.
-To review chunks without computing embeddings:
+To review chunks without computing embeddings, set `SKIP_EMBEDDINGS = True` in
+`src/iphone_guide_chatbot/config/settings.py`, then run the same command:
 
 ```powershell
-.venv\Scripts\python.exe scripts\ingest_pdf.py --skip-embeddings
+.venv\Scripts\python.exe scripts\ingest_pdf.py
 ```
 
 Outputs in `artifacts/ingestion/`:
@@ -144,8 +160,12 @@ titles and special tokens. Defaults are a 350-token target, 450-token maximum,
 and up to 50 tokens of overlap within a section. Protected blocks can exceed the
 soft target to stay intact; no chunk may exceed the hard maximum or the model
 limit. Overlap is shortened or omitted to avoid fragmenting protected blocks or
-exceeding the budget. `--model`, `--revision`, `--target-tokens`, `--max-tokens`,
-`--overlap-tokens`, `--model-limit`, and `--batch-size` configure the pipeline.
+exceeding the budget. Change `MODEL_NAME`, `MODEL_REVISION`, `TARGET_TOKENS`,
+`MAX_TOKENS`, `OVERLAP_TOKENS`, `MODEL_LIMIT`, and `BATCH_SIZE` in
+`src/iphone_guide_chatbot/config/settings.py` to configure the pipeline.
+Change `OUTPUT_PATH` to save a run in a separate directory. Set
+`SKIP_EMBEDDINGS = False` for a full run. Ingestion uses settings directly;
+it does not take command-line options.
 Both tokenizer and embedder use the resolved model revision.
 
 After the model is cached, set `$env:HF_HUB_OFFLINE='1'` for an offline run.

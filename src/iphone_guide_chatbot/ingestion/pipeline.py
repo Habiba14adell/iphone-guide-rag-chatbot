@@ -1,6 +1,5 @@
 ﻿"""Run PDF ingestion and save local files for review before using Qdrant."""
 
-import argparse
 import hashlib
 import json
 import logging
@@ -12,12 +11,11 @@ from ..config.logging_config import setup_logging
 from .chunking import create_chunks, preserve_unchanged_ids, link_notice_context
 from .embeddings import generate_embeddings, load_tokenizer
 from .extraction import extract_pdf
-from ..config.settings import PDF_PATH, OUTPUT_PATH, get_config
+from ..config.settings import PDF_PATH, OUTPUT_PATH, SKIP_EMBEDDINGS, get_config
 from .validation import inspection_text, validate_chunks
 
 
 logger = logging.getLogger(__name__)
-DEFAULT_CONFIG = get_config()
 
 
 def save_jsonl(path, records):
@@ -114,35 +112,15 @@ def run_ingestion(pdf_path=PDF_PATH, output_dir=OUTPUT_PATH, config=None, skip_e
     return report
 
 
-def get_arguments():
-    parser = argparse.ArgumentParser(description="Extract PDF chunks and generate local embeddings")
-    parser.add_argument("--pdf", type=Path, default=Path(PDF_PATH))
-    parser.add_argument("--output", type=Path, default=Path(OUTPUT_PATH))
-    parser.add_argument("--model", default=DEFAULT_CONFIG["model_name"])
-    parser.add_argument("--revision", default=DEFAULT_CONFIG["model_revision"])
-    parser.add_argument("--target-tokens", type=int, default=DEFAULT_CONFIG["target_tokens"])
-    parser.add_argument("--max-tokens", type=int, default=DEFAULT_CONFIG["max_tokens"])
-    parser.add_argument("--overlap-tokens", type=int, default=DEFAULT_CONFIG["overlap_tokens"])
-    parser.add_argument("--model-limit", type=int, default=DEFAULT_CONFIG["model_limit"])
-    parser.add_argument("--batch-size", type=int, default=DEFAULT_CONFIG["batch_size"])
-    parser.add_argument("--skip-embeddings", action="store_true")
-    return parser.parse_args()
-
-
 def main():
     setup_logging()
     try:
-        args = get_arguments()
-        config = get_config(
-            model_name=args.model,
-            model_revision=args.revision,
-            target_tokens=args.target_tokens,
-            max_tokens=args.max_tokens,
-            overlap_tokens=args.overlap_tokens,
-            model_limit=args.model_limit,
-            batch_size=args.batch_size,
+        run_ingestion(
+            pdf_path=PDF_PATH,
+            output_dir=OUTPUT_PATH,
+            config=get_config(),
+            skip_embeddings=SKIP_EMBEDDINGS,
         )
-        run_ingestion(args.pdf, args.output, config, args.skip_embeddings)
     except Exception:
         logger.exception("PDF ingestion failed")
         raise

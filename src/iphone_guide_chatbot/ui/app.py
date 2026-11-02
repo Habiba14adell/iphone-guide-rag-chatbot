@@ -44,7 +44,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from iphone_guide_chatbot.config.logging_config import setup_logging
 from iphone_guide_chatbot.rag.graph import build_state_graph
-from iphone_guide_chatbot.rag.prompts import UNSUPPORTED_ANSWER
+from iphone_guide_chatbot.rag.prompts import UNSUPPORTED_ANSWER, answer_without_sources
 
 
 logger = logging.getLogger(__name__)
@@ -83,6 +83,7 @@ async def on_message(message: cl.Message):
         cl.user_session.set("conversation_history", history)
         graph = cl.user_session.get("graph")
         elements = []
+        answer = ""
         try:
             async with cl.Step(name="Searching the iPhone User Guide", type="tool", show_input=False) as step:
                 result = await graph.ainvoke({
@@ -114,9 +115,10 @@ async def on_message(message: cl.Message):
         except Exception as error:
             logger.error("UI request failed (%s)", type(error).__name__)
             content = "I couldn't retrieve the guide excerpts or generate an answer. Please try again."
+            answer = content
 
         if not elements:
             await cl.ElementSidebar.set_elements([])
         await cl.Message(content=content, author=APP_NAME, elements=elements).send()
-        history.append({"role": "assistant", "content": content})
+        history.append({"role": "assistant", "content": answer_without_sources(answer)})
         cl.user_session.set("conversation_history", history)
