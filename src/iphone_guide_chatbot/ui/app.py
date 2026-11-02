@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from iphone_guide_chatbot.config.logging_config import setup_logging
 from iphone_guide_chatbot.rag.graph import build_state_graph
+from iphone_guide_chatbot.rag.prompts import UNSUPPORTED_ANSWER
 from iphone_guide_chatbot.ui.presentation import format_answer, format_source
 
 
@@ -64,10 +65,15 @@ async def on_message(message: cl.Message):
                 cl.user_session.set("last_result", result)
                 chunks = result.get("retrieved_chunks", [])
                 citations = result.get("citations", [])
-                content = format_answer(result.get("answer", ""), citations)
+                answer = result.get("answer", "")
+                if result.get("status") == "error" or answer.strip() == UNSUPPORTED_ANSWER:
+                    citations = []
+                content = format_answer(answer, citations)
+                cited_sources = {citation["source_number"] for citation in citations}
                 elements = [
                     cl.Text(name=f"Source {rank}", content=format_source(chunk, rank), display="side")
                     for rank, chunk in enumerate(chunks, start=1)
+                    if rank in cited_sources
                 ]
                 if result.get("status") == "error":
                     step.is_error = True
@@ -78,6 +84,8 @@ async def on_message(message: cl.Message):
             logger.error("UI request failed (%s)", type(error).__name__)
             content = "I couldn't retrieve the guide excerpts or generate an answer. Please try again."
 
+        if not elements:
+            await cl.ElementSidebar.set_elements([])
         await cl.Message(content=content, author=APP_NAME, elements=elements).send()
         history.append({"role": "assistant", "content": content})
         cl.user_session.set("conversation_history", history)

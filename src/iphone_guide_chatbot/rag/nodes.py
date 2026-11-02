@@ -74,11 +74,13 @@ def generate_answer_node(state: AgentState) -> dict:
 
         prompt = build_answer_prompt(question, chunks)
         answer = _get_gemini_client().generate_text(prompt)
+        if answer.strip() == UNSUPPORTED_ANSWER:
+            citations = []
         return {"answer": answer, "citations": citations, "status": "completed"}
     except Exception as error:
         logger.error("Answer generation failed (%s)", type(error).__name__)
         return {
             "answer": GENERATION_ERROR_ANSWER,
-            "citations": citations,
+            "citations": [],
             "status": "error",
         }

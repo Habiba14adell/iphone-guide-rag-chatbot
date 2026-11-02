@@ -1,5 +1,6 @@
 """Format generated answers and their retrieved PDF evidence for Chainlit."""
 
+from ..rag.prompts import UNSUPPORTED_ANSWER
 
 def format_pages(pages):
     return ", ".join(str(page) for page in pages) if pages else "Not available"
@@ -28,7 +29,7 @@ def format_answer(answer, citations):
     content = answer.strip() if isinstance(answer, str) else ""
     if not content:
         content = "I couldn't generate an answer right now. Please try again."
-    if not citations:
+    if not citations or content == UNSUPPORTED_ANSWER:
         return content
 
     references = ["", "### Sources"]

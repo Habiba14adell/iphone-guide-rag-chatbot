@@ -7,71 +7,55 @@ This repository is being built incrementally for the Generative AI technical ass
 
 ```text
 iphone-guide-rag-chatbot/
-|-- artifacts/ingestion/          # Local generated chunks, vectors, and reports
-|-- Data/                        # Existing source PDF (filename unchanged)
-|-- docs/
-|   |-- ingestion.md
-|   |-- ingestion-review.md
-|   `-- rag-workflow.md
-|-- logs/                        # Daily application logs
+|-- .chainlit/
+|   `-- config.toml
 |-- scripts/
+|   |-- create_qdrant_collection.py
 |   |-- ingest_pdf.py
-|   |-- upload_to_qdrant.py
-|   `-- create_qdrant_collection.py
-|-- src/iphone_guide_chatbot/
-|   |-- __init__.py
-|   |-- config/
-|   |   |-- __init__.py
-|   |   |-- settings.py
-|   |   `-- logging_config.py
-|   |-- ingestion/
-|   |   |-- __init__.py
-|   |   |-- extraction.py
-|   |   |-- layout.py
-|   |   |-- chunking.py
-|   |   |-- embeddings.py
-|   |   |-- validation.py
-|   |   `-- pipeline.py
-|   |-- retrieval/
-|   |   |-- __init__.py
-|   |   `-- retriever.py          # Read-only semantic retrieval
-|   |-- rag/
-|   |   |-- __init__.py
-|   |   |-- graph.py              # Retrieval then answer generation
-|   |   |-- nodes.py              # Retrieval and answer-generation nodes
-|   |   |-- state.py              # Shared AgentState
-|   |   `-- prompts.py            # Guide-grounded answer prompt
-|   |-- llm/
-|   |   |-- __init__.py
-|   |   `-- gemini_client.py      # Reusable Gemini Interactions client
-|   `-- ui/
-|       |-- __init__.py
-|       |-- app.py                # Chainlit session handlers
-|       `-- presentation.py       # Source display formatting
-|-- checks/
-|   `-- test_answer_generation.py # Mocked offline workflow checks
-|-- test/gemni_test.py            # Manual live Gemini request
-|-- .chainlit/config.toml         # Chainlit name, theme, and features
-|-- chainlit.md                   # UI information page
-|-- .env                         # Local credentials; ignored by Git
+|   `-- upload_to_qdrant.py
+|-- src/
+|   `-- iphone_guide_chatbot/
+|       |-- config/
+|       |   |-- __init__.py
+|       |   |-- logging_config.py
+|       |   `-- settings.py
+|       |-- ingestion/
+|       |   |-- __init__.py
+|       |   |-- chunking.py
+|       |   |-- embeddings.py
+|       |   |-- extraction.py
+|       |   |-- layout.py
+|       |   |-- pipeline.py
+|       |   `-- validation.py
+|       |-- llm/
+|       |   |-- __init__.py
+|       |   `-- gemini_client.py
+|       |-- rag/
+|       |   |-- __init__.py
+|       |   |-- graph.py
+|       |   |-- nodes.py
+|       |   |-- prompts.py
+|       |   `-- state.py
+|       |-- retrieval/
+|       |   |-- __init__.py
+|       |   `-- retriever.py
+|       |-- ui/
+|       |   |-- __init__.py
+|       |   |-- app.py
+|       |   `-- presentation.py
+|       `-- __init__.py
 |-- .env.example
 |-- .gitignore
-|-- requirements.txt
-|-- requirements-dev.txt
-`-- README.md
+|-- chainlit.md
+|-- README.md
+`-- requirements.txt
 ```
 
 Ingestion configuration lives in `src/iphone_guide_chatbot/config/settings.py`.
-The extraction, chunking, and validation behavior is unchanged. The LangGraph
-workflow retrieves guide excerpts and generates a grounded answer with Gemini.
-It does not use a relevance judge.
+The extraction, chunking, and validation behavior is unchanged. The retrieval and
+RAG files listed above are empty placeholders; the chatbot UI is not implemented.
 
-The standalone cloud scripts have moved to `scripts/`. From the repository root,
-their entry points are:
 
-```powershell
-.venv\Scripts\python.exe scripts\upload_to_qdrant.py
-.venv\Scripts\python.exe scripts\create_qdrant_collection.py
 ```
 
 These are explicit operational commands, not part of application startup. The
@@ -86,50 +70,6 @@ retrieval and connection checks remain in their original locations under `tests/
 - Support multi-turn conversations within a session.
 - Use LangChain and/or LangGraph, a cloud-hosted vector database, and Chainlit or Streamlit.
 - Run locally in a single Docker container against an already populated cloud index.
-
-## Run the conversational UI
-
-The interface is named **iPhone Guide Assistant**. Install the updated dependencies
-in the project environment, then run from the repository root:
-
-```powershell
-uv pip install --python .venv\Scripts\python.exe -r requirements.txt
-$env:DEBUG='false'
-.venv\Scripts\python.exe -m chainlit run src/iphone_guide_chatbot/ui/app.py --headless --host 127.0.0.1 --port 8000
-```
-
-Open **http://localhost:8000**. The `DEBUG` setting prevents an inherited nonboolean
-value from interfering with Chainlit's command-line configuration. The existing
-`.env` must supply Qdrant credentials and `GEMINI_API_KEY`; the Gemini model
-defaults to `gemini-3.5-flash-lite`. Do not enter API keys in the chat.
-
-Ask a question such as "How can I connect my iPhone to a Wi-Fi network?" A loading
-indicator covers the graph invocation. Responses contain Gemini's answer and PDF
-page references from retrieved chunks. Supporting excerpts, section and chapter
-names, and printed page references are available in the source panel. Markers
-such as `[icon in PDF]` require inspecting the cited PDF page.
-
-Conversation history and the compiled graph are held in each Chainlit session.
-A new chat has a separate history; no database persistence is configured. Prior
-assistant answers are not sent to Gemini as evidence; each answer uses excerpts
-retrieved for the current question.
-
-Starting the UI does not extract the PDF, generate document embeddings, create
-collections, or upload points. Only questions generate query embeddings and
-read the existing collection. The first model load can take longer than later
-searches. With the model cached, `$env:HF_HUB_OFFLINE='1'` avoids model downloads.
-
-Run the additional offline workflow checks (mocked; no Gemini quota used):
-
-```powershell
-.venv\Scripts\python.exe -m pytest -q checks
-```
-
-The standalone `test/gemni_test.py` script makes a live Gemini request and is not
-part of the offline checks.
-
-Browser validation uses Playwright with the installed Microsoft Edge browser.
-Screenshots from validation are local files under `artifacts/ui/`, excluded from Git.
 
 ## Local PDF ingestion
 
